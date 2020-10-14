@@ -50,7 +50,7 @@ async function main () {
     sender.send('testResp', { b: 2 });
   });
 
-  const client = await tcpocket.createClient({ host: '0.0.0.0', port: 8000, tls });
+  const client = await tcpocket.createClient({ host: 'localhost', port: 8000, tls });
   client.on('testResp', (data, sender) => {
     console.log(data);
   });

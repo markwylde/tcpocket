@@ -29,26 +29,56 @@ test('basic two way server connection works', async t => {
 test('basic two way server connection works with certs', async t => {
   t.plan(2);
 
-  const tls = {
-    key: fs.readFileSync('./certs/localhost.privkey.pem'),
-    cert: fs.readFileSync('./certs/localhost.cert.pem'),
+  const serverTls = {
+    key: fs.readFileSync('./certs/localhost.1.privkey.pem'),
+    cert: fs.readFileSync('./certs/localhost.1.cert.pem'),
+    ca: [fs.readFileSync('./certs/ca.cert.pem')],
+    requestCert: true
+  };
+  const clientTls = {
+    key: fs.readFileSync('./certs/localhost.2.privkey.pem'),
+    cert: fs.readFileSync('./certs/localhost.2.cert.pem'),
     ca: [fs.readFileSync('./certs/ca.cert.pem')]
   };
 
-  const server = await ddb.createServer({ port: 8000, tls });
+  const server = await ddb.createServer({ port: 8000, tls: serverTls });
   server.on('testCmd', (data, sender) => {
     t.deepEqual(data, { testing123: 1 }, 'server received a testCmd');
 
     sender.send('testResp', { b: 2 });
   });
 
-  const client = await ddb.createClient({ host: 'localhost', port: 8000, tls });
+  const client = await ddb.createClient({ host: 'localhost', port: 8000, tls: clientTls });
   client.send('testCmd', { testing123: 1 });
   client.send('testNotCmd', { none: 0 });
   client.on('testResp', (data, sender) => {
     t.deepEqual(data, { b: 2 }, 'client received a testResp');
     closeSockets(server, client);
   });
+});
+
+test('basic two way server connection works with certs (wrongly signed)', async t => {
+  t.plan(1);
+
+  const serverTls = {
+    key: fs.readFileSync('./certs/localhost.1.privkey.pem'),
+    cert: fs.readFileSync('./certs/localhost.1.cert.pem'),
+    ca: [fs.readFileSync('./certs/ca.cert.pem')],
+    requestCert: true
+  };
+  const clientTls = {
+    key: fs.readFileSync('./certs/localhost.wrong.privkey.pem'),
+    cert: fs.readFileSync('./certs/localhost.wrong.cert.pem'),
+    ca: [fs.readFileSync('./certs/ca.wrong.cert.pem')]
+  };
+
+  const server = await ddb.createServer({ port: 8000, tls: serverTls });
+
+  ddb.createClient({ host: 'localhost', port: 8000, tls: clientTls })
+    .catch((error) => {
+      t.equal(error.code, 'CERT_SIGNATURE_FAILURE');
+      closeSockets(server);
+    });
 });
 
 test('server can send data to new client', async t => {

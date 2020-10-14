@@ -8,25 +8,57 @@
 A two way communication library using a pure tcp connection.
 
 ## Example usage
+### Insecure
 ```javascript
-const tcpocket = require('tcpocket')
+const tcpocket = require('tcpocket');
 
 async function main () {
-  const server = await tcpocket.createServer({ port: 8000 })
+  const server = await tcpocket.createServer({ port: 8000 });
   server.on('testCmd', (data, sender) => {
-    console.log(data)
-    sender.send('testResp', { b: 2 })
-  })
+    console.log(data);
+    sender.send('testResp', { b: 2 });
+  });
 
-  const client = await tcpocket.createClient({ host: '0.0.0.0', port: 8000 })
+  const client = await tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
   client.on('testResp', (data, sender) => {
-    console.log(data)
-  })
+    console.log(data);
+  });
 
-  client.send('testCmd', { a: 1 })
+  client.send('testCmd', { a: 1 });
 }
 
-main()
+main();
+```
+
+### Using TLS
+There is a file `./makeCerts.sh` that will create the certs used in the example below.
+
+```javascript
+const fs = require('fs');
+const tcpocket = require('tcpocket');
+
+const tls = {
+  key: fs.readFileSync('./certs/localhost.privkey.pem'),
+  cert: fs.readFileSync('./certs/localhost.cert.pem'),
+  ca: [fs.readFileSync('./certs/ca.cert.pem')]
+};
+
+async function main () {
+  const server = await tcpocket.createServer({ port: 8000, tls });
+  server.on('testCmd', (data, sender) => {
+    console.log(data);
+    sender.send('testResp', { b: 2 });
+  });
+
+  const client = await tcpocket.createClient({ host: '0.0.0.0', port: 8000, tls });
+  client.on('testResp', (data, sender) => {
+    console.log(data);
+  });
+
+  client.send('testCmd', { a: 1 });
+}
+
+main();
 ```
 
 # License

@@ -78,6 +78,10 @@ test('basic two way server connection works with certs (wrongly signed)', async 
     .catch((error) => {
       t.equal(error.code, 'CERT_SIGNATURE_FAILURE');
       closeSockets(server);
+      throw error;
+    })
+    .then(() => {
+      t.fail('connect was successful');
     });
 });
 

@@ -3,6 +3,14 @@ const test = require('tape');
 
 const ddb = require('../');
 
+function expectConnectionRejectError () {
+  return (error) => {
+    if (error.code !== 'ECONNRESET') {
+      throw error;
+    }
+  };
+}
+
 function closeSockets (...args) {
   args.forEach(arg => arg.close());
 }
@@ -10,7 +18,8 @@ function closeSockets (...args) {
 test('basic two way server connection works', async t => {
   t.plan(2);
 
-  const server = await ddb.createServer({ port: 8000 });
+  const server = await ddb.createServer();
+  server.listen(8000);
   server.on('testCmd', (data, sender) => {
     t.deepEqual(data, { a: 1 }, 'server received a testCmd');
 
@@ -41,18 +50,21 @@ test('basic two way server connection works with certs', async t => {
     ca: [fs.readFileSync('./certs/ca.cert.pem')]
   };
 
-  const server = await ddb.createServer({ port: 8000, tls: serverTls });
+  const server = await ddb.createServer({ tls: serverTls });
   server.on('testCmd', (data, sender) => {
     t.deepEqual(data, { testing123: 1 }, 'server received a testCmd');
 
     sender.send('testResp', { b: 2 });
   });
+  server.listen(8000);
 
   const client = await ddb.createClient({ host: 'localhost', port: 8000, tls: clientTls });
+
   client.send('testCmd', { testing123: 1 });
   client.send('testNotCmd', { none: 0 });
   client.on('testResp', (data, sender) => {
     t.deepEqual(data, { b: 2 }, 'client received a testResp');
+    client.on('error', expectConnectionRejectError);
     closeSockets(server, client);
   });
 });
@@ -72,10 +84,12 @@ test('basic two way server connection works with certs (wrongly signed)', async 
     ca: [fs.readFileSync('./certs/ca.wrong.cert.pem')]
   };
 
-  const server = await ddb.createServer({ port: 8000, tls: serverTls });
+  const server = await ddb.createServer({ tls: serverTls });
+  server.listen(8000);
 
   ddb.createClient({ host: 'localhost', port: 8000, tls: clientTls })
     .catch((error) => {
+      console.log(error.code);
       t.equal(error.code, 'CERT_SIGNATURE_FAILURE');
       closeSockets(server);
       throw error;
@@ -88,7 +102,8 @@ test('basic two way server connection works with certs (wrongly signed)', async 
 test('server can send data to new client', async t => {
   t.plan(1);
 
-  const server = await ddb.createServer({ port: 8000 });
+  const server = await ddb.createServer();
+  server.listen(8000);
   server.on('connected', (sender) => {
     sender.send('testResp', { b: 2 });
   });
@@ -103,7 +118,8 @@ test('server can send data to new client', async t => {
 test('client can send data once connected to server', async t => {
   t.plan(1);
 
-  const server = await ddb.createServer({ port: 8000 });
+  const server = await ddb.createServer();
+  server.listen(8000);
   server.on('testCmd', (data, sender) => {
     t.deepEqual(data, { a: 1 }, 'server received a testCmd');
 
@@ -117,7 +133,8 @@ test('client can send data once connected to server', async t => {
 test('client can ask and get a response', async t => {
   t.plan(1);
 
-  const server = await ddb.createServer({ port: 8000 });
+  const server = await ddb.createServer();
+  server.listen(8000);
   server.on('testCmd', (data, sender) => {
     sender.reply({ a: 1 });
   });
@@ -133,7 +150,8 @@ test('client can ask and get a response', async t => {
 test('client can ask and get multiple responses', async t => {
   t.plan(1);
 
-  const server = await ddb.createServer({ port: 8000 });
+  const server = await ddb.createServer();
+  server.listen(8000);
   server.on('testCmd', (data, sender) => {
     sender.reply({ ar: data.a });
   });

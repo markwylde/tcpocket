@@ -13,11 +13,12 @@ A two way communication library using a pure tcp connection.
 const tcpocket = require('tcpocket');
 
 async function main () {
-  const server = await tcpocket.createServer({ port: 8000 });
+  const server = await tcpocket.createServer();
   server.on('testCmd', (data, sender) => {
     console.log(data);
     sender.send('testResp', { b: 2 });
   });
+  server.listen(8000);
 
   const client = await tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
   client.on('testResp', (data, sender) => {
@@ -44,11 +45,12 @@ const tls = {
 };
 
 async function main () {
-  const server = await tcpocket.createServer({ port: 8000, tls });
+  const server = await tcpocket.createServer({ tls });
   server.on('testCmd', (data, sender) => {
     console.log(data);
     sender.send('testResp', { b: 2 });
   });
+  server.listen(8000);
 
   const client = await tcpocket.createClient({ host: 'localhost', port: 8000, tls });
   client.on('testResp', (data, sender) => {

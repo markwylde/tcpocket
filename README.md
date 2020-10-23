@@ -18,7 +18,8 @@ async function main () {
   server.open();
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
-  await client.send({ a: 1 });
+  const response = await client.send({ a: 1 });
+  console.log(response) // === { b: 2}
 }
 
 main();
@@ -44,7 +45,8 @@ async function main () {
   server.open();
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000, tls });
-  await client.send({ a: 1 });
+  const response = await client.send({ a: 1 });
+  console.log(response) // === { b: 2}
 }
 
 main();

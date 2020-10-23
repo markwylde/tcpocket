@@ -58,13 +58,13 @@ function createClient ({ host, port, tls, reconnectDelay = 100 }) {
     }
   });
 
-  eventEmitter.on('error', (error, data) => {
+  client.on('error', (error, data) => {
     if (['EADDRNOTAVAIL', 'CLOSED', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code)) {
       reconnect();
       return;
     }
 
-    eventEmitter.emit(error, data);
+    eventEmitter.emit('error', error, data);
   });
 
   proxyEventEmitter(client, eventEmitter);

@@ -8,14 +8,16 @@ function proxyEventEmitter (sourceEmitter, destinationEmitter) {
     if (args[0] !== 'error') {
       originalEmit(...args);
     }
+
     destinationEmitter.emit(...args);
   };
 }
 
-function createClient ({ host, port, tls }) {
+function createClient ({ host, port, tls, reconnectDelay = 100 }) {
   let client;
   let activeSocket;
   let askSequence = 0;
+  let stopped;
   const eventEmitter = new EventEmitter();
 
   const responders = {};
@@ -43,6 +45,28 @@ function createClient ({ host, port, tls }) {
     client = require('net').createConnection({ host, port }, handler);
   }
 
+  let reconnectTimer;
+  function reconnect () {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+      client.connect({ host, port });
+    }, reconnectDelay);
+  }
+  client.on('close', () => {
+    if (!stopped) {
+      reconnect();
+    }
+  });
+
+  eventEmitter.on('error', (error, data) => {
+    if (['EADDRNOTAVAIL', 'CLOSED', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code)) {
+      reconnect();
+      return;
+    }
+
+    eventEmitter.emit(error, data);
+  });
+
   proxyEventEmitter(client, eventEmitter);
 
   client.setMaxListeners(100);
@@ -61,10 +85,14 @@ function createClient ({ host, port, tls }) {
     client,
 
     eventEmitter,
+    once: eventEmitter.once.bind(eventEmitter),
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
 
-    close: () => activeSocket && activeSocket.close(),
+    close: () => {
+      activeSocket && activeSocket.close();
+      stopped = true;
+    },
 
     send
   };

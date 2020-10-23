@@ -1,6 +1,8 @@
 const fs = require('fs');
 const test = require('./utils/asyncTape');
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 const { createServer, createClient } = require('../');
 
 function closeSockets (...args) {
@@ -80,9 +82,9 @@ test('certs - wrong client certs fail', async t => {
 
   const client = createClient({ host: 'localhost', port: 8000, tls: clientTls });
 
-  client.on('error', error => {
+  client.once('error', error => {
     t.equal(error.code, 'CERT_SIGNATURE_FAILURE');
-    closeSockets(server);
+    closeSockets(client, server);
   });
 
   client.on('secureConnect', () => {
@@ -114,6 +116,28 @@ test('client can ask and get multiple responses', async t => {
     { ar: 4 },
     { ar: 10 }
   ], 'server received all responses');
+
+  closeSockets(server, client);
+});
+
+test('client reconnects when server goes offline and comes back online', async t => {
+  t.plan(2);
+
+  const server = createServer({ port: 8000 }, function (request, response) {
+    response.send({ ar: request.data.a });
+  });
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 100 });
+  const response1 = await client.send({ a: 1 });
+
+  server.close();
+  server.open();
+  await sleep(200);
+
+  const response2 = await client.send({ a: 1 });
+  t.deepEqual(response1, { ar: 1 });
+  t.deepEqual(response2, { ar: 1 });
 
   closeSockets(server, client);
 });

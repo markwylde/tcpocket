@@ -1,5 +1,5 @@
 # TCPocket
-[![Build Status](https://travis-ci.org/markwylde/tcpocket.svg?branch=master)](https://travis-ci.org/markwylde/tcpocket)
+![Node.js Test Runner](https://github.com/markwylde/tcpocket/workflows/Node.js%20Test%20Runner/badge.svg)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/markwylde/tcpocket)
 [![GitHub package.json version](https://img.shields.io/github/package-json/v/markwylde/tcpocket)](https://github.com/markwylde/tcpocket/blob/master/package.json)
 [![GitHub](https://img.shields.io/github/license/markwylde/tcpocket)](https://github.com/markwylde/tcpocket/blob/master/LICENSE)
@@ -13,13 +13,14 @@ const tcpocket = require('tcpocket');
 
 async function main () {
   const server = tcpocket.createServer({ port: 8000 }, function (request, response) {
+    console.log(request.data) // === { a: 1 }
     response.send({ b: 2 });
   });
   server.open();
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
   const response = await client.send({ a: 1 });
-  console.log(response) // === { b: 2}
+  console.log(response) // === { b: 2 }
 }
 
 main();

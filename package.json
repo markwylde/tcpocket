@@ -1,16 +1,19 @@
 {
   "name": "tcpocket",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "description": "[![Build Status](https://travis-ci.org/markwylde/tcpocket.svg?branch=master)](https://travis-ci.org/markwylde/tcpocket) [![David DM](https://david-dm.org/markwylde/tcpocket.svg)](https://david-dm.org/markwylde/tcpocket) ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/markwylde/tcpocket) [![GitHub package.json version](https://img.shields.io/github/package-json/v/markwylde/tcpocket)](https://github.com/markwylde/tcpocket/blob/master/package.json) [![GitHub](https://img.shields.io/github/license/markwylde/tcpocket)](https://github.com/markwylde/tcpocket/blob/master/LICENSE)",
   "main": "index.js",
   "scripts": {
     "test": "./makeCerts.sh && c8 node test/index.js"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "ndjson-fe": "^1.2.5",
-    "tape": "^5.0.1"
+    "ndjson-fe": "^1.2.5"
+  },
+  "devDependencies": {
+    "c8": "^7.3.4",
+    "tape": "^4.11.0"
   },
   "directories": {
     "lib": "lib",
@@ -24,8 +27,5 @@
   "bugs": {
     "url": "https://github.com/markwylde/tcpocket/issues"
   },
-  "homepage": "https://github.com/markwylde/tcpocket#readme",
-  "devDependencies": {
-    "c8": "^7.3.4"
-  }
+  "homepage": "https://github.com/markwylde/tcpocket#readme"
 }

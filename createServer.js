@@ -1,6 +1,8 @@
 const ndJsonFe = require('ndjson-fe');
 
-function createServer ({ port, tls } = {}, handler) {
+function createServer (options, handler) {
+  const { port, tls } = options || {};
+
   const sockets = [];
   function wrapper (socket) {
     sockets.push(socket);

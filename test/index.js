@@ -1,5 +1,5 @@
 const fs = require('fs');
-const test = require('./utils/asyncTape');
+const test = require('tape');
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 

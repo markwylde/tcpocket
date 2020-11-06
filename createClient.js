@@ -88,15 +88,15 @@ function createClient ({ host, port, tls, reconnectDelay = 250 }) {
 
     close: () => new Promise(resolve => {
       if (!client || stopped) {
-        resolve()
-        return
+        resolve();
+        return;
       }
 
       stopped = true;
 
       client.once('close', () => {
-        resolve()
-      })
+        resolve();
+      });
       client.destroy();
     }),
 

@@ -13,18 +13,15 @@ function proxyEventEmitter (sourceEmitter, destinationEmitter) {
   };
 }
 
-function createClient ({ host, port, tls, reconnectDelay = 100 }) {
+function createClient ({ host, port, tls, reconnectDelay = 250 }) {
   let client;
-  let activeSocket;
   let askSequence = 0;
   let stopped;
   const eventEmitter = new EventEmitter();
 
   const responders = {};
 
-  function handler (socket) {
-    activeSocket = socket;
-
+  function handler () {
     const feed = ndJsonFe();
 
     feed.on('next', row => {
@@ -89,10 +86,19 @@ function createClient ({ host, port, tls, reconnectDelay = 100 }) {
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
 
-    close: () => {
-      activeSocket && activeSocket.close();
+    close: () => new Promise(resolve => {
+      if (!client || stopped) {
+        resolve();
+        return;
+      }
+
       stopped = true;
-    },
+
+      client.once('close', () => {
+        resolve();
+      });
+      client.destroy();
+    }),
 
     send
   };

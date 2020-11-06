@@ -42,8 +42,11 @@ function createServer (options, handler) {
       sockets.forEach(socket => {
         try {
           socket.destroy();
-        } catch (_) {}
+        } catch (error) {
+          console.log(error);
+        }
       });
+
       server.close(fn);
     }
   };

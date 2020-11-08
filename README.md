@@ -14,11 +14,20 @@ const tcpocket = require('tcpocket');
 async function main () {
   const server = tcpocket.createServer({ port: 8000 }, function (request, response) {
     console.log(request.data) // === { a: 1 }
-    response.send({ b: 2 });
+
+    // You can reply only once
+    response.reply({ b: 2 });
+
+    // Sending happens outside of a reply and can be called multiple times
+    response.send({ another: 'message' });
   });
   server.open();
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('message', (data) => {
+    console.log(data) // === { b: 2 }
+  });
+
   const response = await client.send({ a: 1 });
   console.log(response) // === { b: 2 }
 }
@@ -41,7 +50,13 @@ const tls = {
 
 async function main () {
   const server = tcpocket.createServer({ port: 8000, tls }, function (request, response) {
-    response.send({ b: 2 });
+    console.log(request.data) // === { a: 1 }
+
+    // You can reply only once
+    response.reply({ b: 2 });
+
+    // Sending happens outside of a reply and can be called multiple times
+    response.send({ another: 'message' });
   });
   server.open();
 

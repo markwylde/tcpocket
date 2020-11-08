@@ -30,6 +30,8 @@ function createClient ({ host, port, tls, reconnectDelay = 250 }) {
 
       if (responder) {
         responder(row[1]);
+      } else {
+        eventEmitter.emit('message', row[1]);
       }
     });
 

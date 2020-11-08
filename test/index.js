@@ -141,3 +141,22 @@ test('client reconnects when server goes offline and comes back online', async t
 
   closeSockets(server, client);
 });
+
+test('one way communication', async t => {
+  t.plan(2);
+
+  const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
+    response.send({ status: 'success' });
+    response.send({ another: 'message' });
+  });
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('message', (data) => {
+    closeSockets(server, client);
+
+    t.equal(data.another, 'message');
+  });
+  const reply = await client.send({ command: 'something' });
+  t.deepEqual(reply, { status: 'success' });
+});

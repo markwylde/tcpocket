@@ -14,7 +14,7 @@ test('basic two way server connection works', async t => {
 
   const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
     t.deepEqual(request.data, { a: 1 }, 'server received a testCmd');
-    response.send({ b: 2 });
+    response.reply({ b: 2 });
   });
 
   server.open();
@@ -47,7 +47,7 @@ test('basic two way server connection works with certs', async t => {
   const server = createServer({ port: 8000, tls: serverTls }, function (request, response) {
     t.deepEqual(request.data, { a: 1 }, 'server received a testCmd');
 
-    response.send({ b: 2 });
+    response.reply({ b: 2 });
   });
   server.open();
 
@@ -96,7 +96,7 @@ test('client can ask and get multiple responses', async t => {
   t.plan(1);
 
   const server = createServer({ port: 8000 }, function (request, response) {
-    response.send({ ar: request.data.a });
+    response.reply({ ar: request.data.a });
   });
   server.open();
 
@@ -124,7 +124,7 @@ test('client reconnects when server goes offline and comes back online', async t
   t.plan(2);
 
   const server = createServer({ port: 8000 }, function (request, response) {
-    response.send({ ar: request.data.a });
+    response.reply({ ar: request.data.a });
   });
   server.open();
 
@@ -146,7 +146,7 @@ test('one way communication', async t => {
   t.plan(2);
 
   const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
-    response.send({ status: 'success' });
+    response.reply({ status: 'success' });
     response.send({ another: 'message' });
   });
   server.open();

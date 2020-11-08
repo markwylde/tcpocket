@@ -16,6 +16,9 @@ function createServer (options, handler) {
           data: data[1]
         }, {
           send: responseData => {
+            socket.write(JSON.stringify(['?', responseData]) + '\n');
+          },
+          reply: responseData => {
             socket.write(JSON.stringify([data[0], responseData]) + '\n');
           }
         });

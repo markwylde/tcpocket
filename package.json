@@ -9,7 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "ndjson-fe": "^1.2.5"
+    "ndjson-fe": "^1.2.6"
   },
   "devDependencies": {
     "c8": "^7.3.4",

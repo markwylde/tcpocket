@@ -1,12 +1,12 @@
 const fs = require('fs');
-const test = require('tape');
+const test = require('basictap');
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const { createServer, createClient } = require('../');
 
 function closeSockets (...args) {
-  args.forEach(arg => arg.close());
+  return Promise.all(args.map(arg => arg.close()));
 }
 
 test('basic two way server connection works', async t => {
@@ -25,8 +25,9 @@ test('basic two way server connection works', async t => {
   });
   const response = await client.send({ a: 1 });
 
+  await closeSockets(server, client);
+
   t.deepEqual(response, { b: 2 }, 'client received a testResp');
-  closeSockets(server, client);
 });
 
 test('basic two way server connection works with certs', async t => {
@@ -44,22 +45,23 @@ test('basic two way server connection works with certs', async t => {
     ca: [fs.readFileSync('./certs/ca.cert.pem')]
   };
 
-  const server = createServer({ port: 8000, tls: serverTls }, function (request, response) {
+  const server = createServer({ port: 8000, ...serverTls }, function (request, response) {
     t.deepEqual(request.data, { a: 1 }, 'server received a testCmd');
 
     response.reply({ b: 2 });
   });
   server.open();
 
-  const client = createClient({ host: 'localhost', port: 8000, tls: clientTls });
+  const client = createClient({ host: 'localhost', port: 8000, ...clientTls });
   client.on('secureConnect', () => {
     t.pass('secureConnect was successful');
   });
 
   const response = await client.send({ a: 1 });
 
+  await closeSockets(server, client);
+
   t.deepEqual(response, { b: 2 }, 'client received a testResp');
-  closeSockets(server, client);
 });
 
 test('certs - wrong client certs fail', async t => {
@@ -77,14 +79,14 @@ test('certs - wrong client certs fail', async t => {
     ca: [fs.readFileSync('./certs/ca.wrong.cert.pem')]
   };
 
-  const server = createServer({ port: 8000, tls: serverTls }, function (request, response) {});
+  const server = createServer({ port: 8000, ...serverTls }, function (request, response) {});
   server.open();
 
-  const client = createClient({ host: 'localhost', port: 8000, tls: clientTls });
+  const client = createClient({ host: 'localhost', port: 8000, ...clientTls });
 
-  client.once('error', error => {
+  client.once('error', async error => {
+    await closeSockets(client, server);
     t.equal(error.code, 'CERT_SIGNATURE_FAILURE');
-    closeSockets(client, server);
   });
 
   client.on('secureConnect', () => {
@@ -109,6 +111,8 @@ test('client can ask and get multiple responses', async t => {
     client.send({ a: 10 })
   ]);
 
+  await closeSockets(server, client);
+
   t.deepEqual(responses, [
     { ar: 1 },
     { ar: 2 },
@@ -116,8 +120,6 @@ test('client can ask and get multiple responses', async t => {
     { ar: 4 },
     { ar: 10 }
   ], 'server received all responses');
-
-  closeSockets(server, client);
 });
 
 test('client reconnects when server goes offline and comes back online', async t => {
@@ -136,10 +138,11 @@ test('client reconnects when server goes offline and comes back online', async t
   await sleep(200);
 
   const response2 = await client.send({ a: 1 });
+
+  await closeSockets(server, client);
+
   t.deepEqual(response1, { ar: 1 });
   t.deepEqual(response2, { ar: 1 });
-
-  closeSockets(server, client);
 });
 
 test('one way communication', async t => {
@@ -152,8 +155,8 @@ test('one way communication', async t => {
   server.open();
 
   const client = createClient({ host: '0.0.0.0', port: 8000 });
-  client.on('message', (data) => {
-    closeSockets(server, client);
+  client.on('message', async (data) => {
+    await closeSockets(server, client);
 
     t.equal(data.another, 'message');
   });

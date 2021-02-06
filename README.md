@@ -49,7 +49,7 @@ const tls = {
 };
 
 async function main () {
-  const server = tcpocket.createServer({ port: 8000, tls }, function (request, response) {
+  const server = tcpocket.createServer({ port: 8000, ...tls }, function (request, response) {
     console.log(request.data) // === { a: 1 }
 
     // You can reply only once
@@ -60,7 +60,7 @@ async function main () {
   });
   server.open();
 
-  const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000, tls });
+  const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000, ...tls });
   const response = await client.send({ a: 1 });
   console.log(response) // === { b: 2}
 }

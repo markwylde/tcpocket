@@ -13,7 +13,7 @@ function proxyEventEmitter (sourceEmitter, destinationEmitter) {
   };
 }
 
-function createClient ({ host, port, tls, reconnectDelay = 250 }) {
+function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
   let client;
   let askSequence = 0;
   let stopped;
@@ -38,17 +38,17 @@ function createClient ({ host, port, tls, reconnectDelay = 250 }) {
     client.pipe(feed);
   }
 
-  if (tls) {
-    client = require('tls').connect(port, host, tls, handler);
+  if (connectionOptions.key) {
+    client = require('tls').connect(connectionOptions, handler);
   } else {
-    client = require('net').createConnection({ host, port }, handler);
+    client = require('net').createConnection(connectionOptions, handler);
   }
 
   let reconnectTimer;
   function reconnect () {
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
-      client.connect({ host, port });
+      client.connect(connectionOptions);
     }, reconnectDelay);
   }
   client.on('close', () => {

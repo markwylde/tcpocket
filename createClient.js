@@ -105,6 +105,12 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
       stopped = true;
 
+      if (client._readableState.closed || client._writableState.closed) {
+        client.destroy();
+        resolve();
+        return;
+      }
+
       client.once('close', () => {
         resolve();
       });

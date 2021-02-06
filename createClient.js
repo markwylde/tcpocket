@@ -38,37 +38,46 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
     client.pipe(feed);
   }
 
-  if (connectionOptions.key) {
-    client = require('tls').connect(connectionOptions, handler);
-  } else {
-    client = require('net').createConnection(connectionOptions, handler);
-  }
-
   let reconnectTimer;
   function reconnect () {
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
-      client.connect(connectionOptions);
+      makeConnection();
     }, reconnectDelay);
   }
-  client.on('close', () => {
-    if (!stopped) {
-      reconnect();
-    }
-  });
 
-  client.on('error', (error, data) => {
-    if (['EADDRNOTAVAIL', 'CLOSED', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code)) {
-      reconnect();
-      return;
+  function makeConnection () {
+    if (client) {
+      client.destroy();
     }
 
-    eventEmitter.emit('error', error, data);
-  });
+    if (connectionOptions.key) {
+      client = require('tls').connect(connectionOptions, handler);
+    } else {
+      client = require('net').createConnection(connectionOptions, handler);
+    }
 
-  proxyEventEmitter(client, eventEmitter);
+    client.on('close', () => {
+      if (!stopped) {
+        reconnect();
+      }
+    });
 
-  client.setMaxListeners(100);
+    client.on('error', (error, data) => {
+      if (['EADDRNOTAVAIL', 'CLOSED', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code)) {
+        reconnect();
+        return;
+      }
+
+      eventEmitter.emit('error', error, data);
+    });
+
+    proxyEventEmitter(client, eventEmitter);
+
+    client.setMaxListeners(100);
+  }
+
+  makeConnection();
 
   function send (data) {
     const currentAskSequence = askSequence++;

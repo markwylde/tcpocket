@@ -1,8 +1,6 @@
 const ndJsonFe = require('ndjson-fe');
 
 function createServer (options, handler) {
-  const { port, tls } = options || {};
-
   const sockets = [];
   function wrapper (socket) {
     sockets.push(socket);
@@ -32,13 +30,13 @@ function createServer (options, handler) {
     socket.pipe(feed);
   }
 
-  const server = tls ? require('tls').createServer(tls, wrapper) : require('net').createServer(wrapper);
+  const server = options.key ? require('tls').createServer(options, wrapper) : require('net').createServer(wrapper);
 
   return {
     ...server,
 
     open: () => {
-      server.listen(port);
+      server.listen(options.port);
     },
 
     close: (fn) => {

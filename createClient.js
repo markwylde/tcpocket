@@ -112,6 +112,7 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
     return new Promise((resolve, reject) => {
       waitUntilConnected((error) => {
         if (error) {
+          error.data = data;
           reject(error);
           return;
         }
@@ -139,13 +140,17 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
       stopped = true;
 
-      if (client._readableState.closed || client._writableState.closed) {
+      const socketIsOpen = (client.writable === false && client.readable === false);
+      if (socketIsOpen) {
         client.destroy();
         resolve();
         return;
       }
 
       client.once('close', () => {
+        resolve();
+      });
+      client.once('error', () => {
         resolve();
       });
       client.destroy();

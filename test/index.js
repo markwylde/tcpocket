@@ -122,6 +122,55 @@ test('client can ask and get multiple responses', async t => {
   ], 'server received all responses');
 });
 
+test('client connects when server starts after', async t => {
+  t.plan(1);
+
+  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
+
+  await sleep(100);
+
+  const server = createServer({ port: 8000 }, function (request, response) {
+    response.reply({ ar: request.data.a });
+  });
+  server.open();
+
+  await sleep(100);
+
+  const response1 = await client.send({ a: 1 });
+
+  await closeSockets(server, client);
+
+  t.deepEqual(response1, { ar: 1 });
+});
+
+test('client sends message when server starts after', async t => {
+  t.plan(1);
+
+  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
+  client.send({ a: 1 }).then(async response1 => {
+    await closeSockets(server, client);
+
+    t.deepEqual(response1, { ar: 1 });
+  });
+
+  await sleep(100);
+
+  const server = createServer({ port: 8000 }, function (request, response) {
+    response.reply({ ar: request.data.a });
+  });
+  server.open();
+});
+
+test('client errors when server never starts', async t => {
+  t.plan(1);
+
+  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
+  client.send({ a: 1 }).catch(error => {
+    t.equal(error.message, 'tcpocket: client stopped');
+  });
+  client.close();
+});
+
 test('client reconnects when server goes offline and comes back online', async t => {
   t.plan(2);
 

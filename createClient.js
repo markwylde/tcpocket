@@ -6,10 +6,10 @@ function proxyEventEmitter (sourceEmitter, destinationEmitter) {
   const originalEmit = sourceEmitter.emit.bind(sourceEmitter);
   sourceEmitter.emit = (...args) => {
     if (args[0] !== 'error') {
-      originalEmit(...args);
+      destinationEmitter.emit(...args);
     }
 
-    destinationEmitter.emit(...args);
+    originalEmit(...args);
   };
 }
 
@@ -17,6 +17,9 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
   let client;
   let askSequence = 0;
   let stopped;
+  let connected = false;
+  let writeQueue = [];
+
   const eventEmitter = new EventEmitter();
 
   const responders = {};
@@ -57,10 +60,27 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
       client = require('net').createConnection(connectionOptions, handler);
     }
 
+    proxyEventEmitter(client, eventEmitter);
+
+    client.on('connect', () => {
+      connected = true;
+      writeQueue.forEach(callback => {
+        callback();
+      });
+      writeQueue = [];
+    });
+
     client.on('close', () => {
+      connected = false;
       if (!stopped) {
         reconnect();
+        return;
       }
+
+      writeQueue.forEach(callback => {
+        callback(new Error('tcpocket: client stopped'));
+      });
+      writeQueue = [];
     });
 
     client.on('error', (error, data) => {
@@ -72,19 +92,32 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
       eventEmitter.emit('error', error, data);
     });
 
-    proxyEventEmitter(client, eventEmitter);
-
     client.setMaxListeners(100);
   }
 
   makeConnection();
 
+  function waitUntilConnected (callback) {
+    if (connected) {
+      callback();
+      return;
+    }
+
+    writeQueue.push(callback);
+  }
+
   function send (data) {
     const currentAskSequence = askSequence++;
 
-    client.write(JSON.stringify([currentAskSequence, data]) + '\n');
+    return new Promise((resolve, reject) => {
+      waitUntilConnected((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        client.write(JSON.stringify([currentAskSequence, data]) + '\n');
+      });
 
-    return new Promise((resolve) => {
       responders[currentAskSequence] = resolve;
     });
   }
@@ -99,6 +132,7 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
     close: () => new Promise(resolve => {
       if (!client || stopped) {
+        stopped = true;
         resolve();
         return;
       }

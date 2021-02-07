@@ -1,6 +1,9 @@
 const fs = require('fs');
+const assert = require('assert');
+
 const test = require('basictap');
 
+const mapTimes = (times, fn) => Array(times).fill().map((_, index) => fn(index));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const { createServer, createClient } = require('../');
@@ -211,4 +214,48 @@ test('one way communication', async t => {
   });
   const reply = await client.send({ command: 'something' });
   t.deepEqual(reply, { status: 'success' });
+});
+
+test('stress test and timings', async t => {
+  t.plan(2);
+
+  const startTime = Date.now();
+  let succeeded = 0;
+  for (let serverIndex = 0; serverIndex < 20; serverIndex++) {
+    const server = createServer({ port: 8000 + serverIndex }, function (request, response) {
+      response.reply({ ar: request.data.a });
+    });
+    server.open();
+
+    const clientsPromises = mapTimes(50, async clientIndex => {
+      const client = createClient({ host: '0.0.0.0', port: 8000 + serverIndex });
+      const responses = await Promise.all([
+        client.send({ a: 1 }),
+        client.send({ a: 2 }),
+        client.send({ a: 3 }),
+        client.send({ a: 4 }),
+        client.send({ a: 10 })
+      ]);
+
+      assert.deepEqual(responses, [
+        { ar: 1 },
+        { ar: 2 },
+        { ar: 3 },
+        { ar: 4 },
+        { ar: 10 }
+      ]);
+      succeeded = succeeded + 1;
+
+      return client;
+    });
+
+    const clients = await Promise.all(clientsPromises);
+
+    await closeSockets(server, ...clients);
+  }
+
+  const timeTaken = Date.now() - startTime;
+
+  t.equal(succeeded, 1000);
+  t.ok(timeTaken < 2000, 'should take less than 2 seconds (' + timeTaken + 'ms)');
 });

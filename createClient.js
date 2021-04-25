@@ -43,6 +43,9 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
   let reconnectTimer;
   function reconnect () {
+    if (stopped) {
+      return;
+    }
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
       makeConnection();
@@ -50,6 +53,8 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
   }
 
   function makeConnection () {
+    clearTimeout(reconnectTimer);
+
     if (client) {
       client.destroy();
     }
@@ -140,8 +145,8 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
       stopped = true;
 
-      const socketIsOpen = (client.writable === false && client.readable === false);
-      if (socketIsOpen) {
+      const socketIsOpen = (client.writable === true || client.readable === true);
+      if (!socketIsOpen) {
         client.destroy();
         resolve();
         return;

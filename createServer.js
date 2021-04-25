@@ -27,6 +27,8 @@ function createServer (options, handler) {
       }
     });
 
+    feed.on('error', console.log);
+
     socket.pipe(feed);
   }
 

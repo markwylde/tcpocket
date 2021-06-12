@@ -25,7 +25,7 @@ async function main () {
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
   client.on('message', (data) => {
-    console.log(data) // === { b: 2 }
+    console.log(data) // === { another: 'message' }
   });
 
   const response = await client.send({ a: 1 });

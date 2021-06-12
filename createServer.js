@@ -7,7 +7,7 @@ function createServer (options, handler) {
 
     const feed = ndJsonFe();
 
-    feed.on('next', data => {
+    const next = data => {
       try {
         handler({
           socket,
@@ -25,9 +25,18 @@ function createServer (options, handler) {
           throw error;
         });
       }
-    });
+    }
 
-    feed.on('error', console.log);
+    feed.on('next', next);
+
+    feed.on('error', function (error) {
+      if (error.includes('Invalid JSON received')) {
+        socket.write(JSON.stringify(['?', error]) + '\n');
+        socket.pipe(feed);
+        return
+      } 
+      throw error;
+    });
 
     socket.pipe(feed);
   }

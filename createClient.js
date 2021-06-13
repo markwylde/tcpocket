@@ -23,12 +23,11 @@ const waitUntil = promisify(function (fn, cb) {
   cb();
 });
 
-function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
+function createClient ({ ...connectionOptions }) {
   let client;
   let askSequence = 0;
   let stopped;
   let connected = false;
-  let writeQueue = [];
 
   const eventEmitter = new EventEmitter();
 
@@ -42,7 +41,7 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
       delete responders[row[0]];
 
       if (responder) {
-        responder(row[1]);
+        responder.resolve(row[1]);
       } else {
         eventEmitter.emit('message', row[1]);
       }
@@ -51,24 +50,7 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
     client.pipe(feed);
   }
 
-  let reconnectTimer;
-  function reconnect () {
-    if (stopped) {
-      return;
-    }
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(() => {
-      makeConnection();
-    }, reconnectDelay);
-  }
-
   function makeConnection () {
-    clearTimeout(reconnectTimer);
-
-    if (client) {
-      client.destroy();
-    }
-
     if (connectionOptions.key) {
       client = require('tls').connect(connectionOptions, handler);
     } else {
@@ -79,31 +61,16 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
     client.on('connect', () => {
       connected = true;
-      writeQueue.forEach(callback => {
-        callback();
-      });
-      writeQueue = [];
     });
 
     client.on('close', async () => {
-      connected = false;
-      if (!stopped) {
-        reconnect();
-        return;
-      }
-
-      writeQueue.forEach(callback => {
-        callback(new Error('tcpocket: client stopped'));
+      Object.keys(responders).forEach(key => {
+        responders[key].reject(new Error('client disconnected'));
       });
-      writeQueue = [];
+      connected = false;
     });
 
     client.on('error', (error, data) => {
-      if (['EADDRNOTAVAIL', 'CLOSED', 'ECONNREFUSED', 'ECONNRESET'].includes(error.code)) {
-        reconnect();
-        return;
-      }
-
       eventEmitter.emit('error', error, data);
     });
 
@@ -112,34 +79,18 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
   makeConnection();
 
-  function waitUntilConnected (callback) {
-    if (connected) {
-      callback();
-      return;
-    }
-
-    writeQueue.push(callback);
-  }
-
-  function send (data, waitForConnection=true) {
+  function send (data) {
     const currentAskSequence = askSequence++;
 
     return new Promise((resolve, reject) => {
-      if (!waitForConnection && !connected) {
+      if (!connected) {
         reject(new Error('client disconnected'));
         return;
       }
 
-      waitUntilConnected((error) => {
-        if (error) {
-          error.data = data;
-          reject(error);
-          return;
-        }
-        client.write(JSON.stringify([currentAskSequence, data]) + '\n');
-      });
+      client.write(JSON.stringify([currentAskSequence, data]) + '\n');
 
-      responders[currentAskSequence] = resolve;
+      responders[currentAskSequence] = { resolve, reject };
     });
   }
 
@@ -151,6 +102,12 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
 
+    waitUntilConnected: () => {
+      return waitUntil(() => {
+        return connected;
+      })
+    },
+
     close: async function (force) {
       if (!client || stopped) {
         stopped = true;
@@ -158,8 +115,6 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
       }
 
       stopped = true;
-
-      !force && await waitUntil(() => writeQueue.length === 0);
 
       return new Promise(resolve => {
         const socketIsOpen = (client.writable === true || client.readable === true);

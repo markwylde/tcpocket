@@ -26,6 +26,7 @@ test('basic two way server connection works', async t => {
   client.on('connect', () => {
     t.pass('connect was successful');
   });
+  await client.waitUntilConnected();
   const response = await client.send({ a: 1 });
 
   await closeSockets(server, client);
@@ -60,6 +61,7 @@ test('basic two way server connection works with certs', async t => {
     t.pass('secureConnect was successful');
   });
 
+  await client.waitUntilConnected();
   const response = await client.send({ a: 1 });
 
   await closeSockets(server, client);
@@ -106,6 +108,7 @@ test('client can ask and get multiple responses', async t => {
   server.open();
 
   const client = createClient({ host: '0.0.0.0', port: 8000 });
+  await client.waitUntilConnected();
   const responses = await Promise.all([
     client.send({ a: 1 }),
     client.send({ a: 2 }),
@@ -123,45 +126,6 @@ test('client can ask and get multiple responses', async t => {
     { ar: 4 },
     { ar: 10 }
   ], 'server received all responses');
-});
-
-test('client connects when server starts after', async t => {
-  t.plan(1);
-
-  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
-
-  await sleep(100);
-
-  const server = createServer({ port: 8000 }, function (request, response) {
-    response.reply({ ar: request.data.a });
-  });
-  server.open();
-
-  await sleep(100);
-
-  const response1 = await client.send({ a: 1 });
-
-  await closeSockets(server, client);
-
-  t.deepEqual(response1, { ar: 1 });
-});
-
-test('client sends message when server starts after', async t => {
-  t.plan(1);
-
-  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
-  client.send({ a: 1 }).then(async response1 => {
-    await closeSockets(server, client);
-
-    t.deepEqual(response1, { ar: 1 });
-  });
-
-  await sleep(100);
-
-  const server = createServer({ port: 8000 }, function (request, response) {
-    response.reply({ ar: request.data.a });
-  });
-  server.open();
 });
 
 test('client sends error when server disconnects mid message', async t => {
@@ -186,33 +150,11 @@ test('client errors when server never starts', async t => {
   t.plan(1);
 
   const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
+
   client.send({ a: 1 }).catch(error => {
-    t.equal(error.message, 'tcpocket: client stopped');
+    t.equal(error.message, 'client disconnected');
   });
   client.close();
-});
-
-test('client reconnects when server goes offline and comes back online', async t => {
-  t.plan(2);
-
-  const server = createServer({ port: 8000 }, function (request, response) {
-    response.reply({ ar: request.data.a });
-  });
-  server.open();
-
-  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 100 });
-  const response1 = await client.send({ a: 1 });
-
-  server.close();
-  server.open();
-  await sleep(200);
-
-  const response2 = await client.send({ a: 1 });
-
-  await closeSockets(server, client);
-
-  t.deepEqual(response1, { ar: 1 });
-  t.deepEqual(response2, { ar: 1 });
 });
 
 test('one way communication', async t => {
@@ -225,6 +167,7 @@ test('one way communication', async t => {
   server.open();
 
   const client = createClient({ host: '0.0.0.0', port: 8000 });
+  await client.waitUntilConnected();
   client.on('message', async (data) => {
     await closeSockets(server, client);
 
@@ -247,6 +190,7 @@ test('stress test and timings', async t => {
 
     const clientsPromises = mapTimes(50, async clientIndex => {
       const client = createClient({ host: '0.0.0.0', port: 8000 + serverIndex });
+      await client.waitUntilConnected();
       const responses = await Promise.all([
         client.send({ a: 1 }),
         client.send({ a: 2 }),

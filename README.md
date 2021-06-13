@@ -28,6 +28,7 @@ async function main () {
     console.log(data) // === { another: 'message' }
   });
 
+  await client.waitUntilReady();
   const response = await client.send({ a: 1 });
   console.log(response) // === { b: 2 }
 }
@@ -61,7 +62,10 @@ async function main () {
   server.open();
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000, ...tls });
+
+  await client.waitUntilReady();
   const response = await client.send({ a: 1 });
+
   console.log(response) // === { b: 2}
 }
 

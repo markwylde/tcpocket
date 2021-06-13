@@ -121,10 +121,15 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
     writeQueue.push(callback);
   }
 
-  function send (data) {
+  function send (data, waitForConnection=true) {
     const currentAskSequence = askSequence++;
 
     return new Promise((resolve, reject) => {
+      if (!waitForConnection && !connected) {
+        reject(new Error('shit'));
+        return;
+      }
+
       waitUntilConnected((error) => {
         if (error) {
           error.data = data;

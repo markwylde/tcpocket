@@ -164,6 +164,24 @@ test('client sends message when server starts after', async t => {
   server.open();
 });
 
+test('client sends error when server disconnects mid message', async t => {
+  t.plan(1);
+
+  const server = createServer({ port: 8000 }, function (request, response) {
+    response.reply({ ar: request.data.a });
+  });
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
+  server.close();
+
+  client.send({ a: 1 }, false).catch(async error => {
+    await closeSockets(server, client);
+
+    t.equal(error.message, 'shit');
+  });
+});
+
 test('client errors when server never starts', async t => {
   t.plan(1);
 

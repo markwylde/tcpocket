@@ -178,7 +178,7 @@ test('client sends error when server disconnects mid message', async t => {
   client.send({ a: 1 }, false).catch(async error => {
     await closeSockets(server, client);
 
-    t.equal(error.message, 'shit');
+    t.equal(error.message, 'client disconnected');
   });
 });
 

@@ -126,7 +126,7 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
 
     return new Promise((resolve, reject) => {
       if (!waitForConnection && !connected) {
-        reject(new Error('shit'));
+        reject(new Error('client disconnected'));
         return;
       }
 

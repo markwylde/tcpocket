@@ -1,5 +1,5 @@
 const EventEmitter = require('events');
-
+const { promisify } = require('util');
 const ndJsonFe = require('ndjson-fe');
 
 function proxyEventEmitter (sourceEmitter, destinationEmitter) {
@@ -12,6 +12,16 @@ function proxyEventEmitter (sourceEmitter, destinationEmitter) {
     originalEmit(...args);
   };
 }
+
+const waitUntil = promisify(function (fn, cb) {
+  const result = fn();
+  if (!result) {
+    setTimeout(() => waitUntil(fn, cb));
+    return;
+  }
+
+  cb();
+});
 
 function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
   let client;
@@ -75,7 +85,7 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
       writeQueue = [];
     });
 
-    client.on('close', () => {
+    client.on('close', async () => {
       connected = false;
       if (!stopped) {
         reconnect();
@@ -136,30 +146,33 @@ function createClient ({ reconnectDelay = 250, ...connectionOptions }) {
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
 
-    close: () => new Promise(resolve => {
+    close: async function (force) {
       if (!client || stopped) {
         stopped = true;
-        resolve();
         return;
       }
 
       stopped = true;
 
-      const socketIsOpen = (client.writable === true || client.readable === true);
-      if (!socketIsOpen) {
-        client.destroy();
-        resolve();
-        return;
-      }
+      !force && await waitUntil(() => writeQueue.length === 0);
 
-      client.once('close', () => {
-        resolve();
+      return new Promise(resolve => {
+        const socketIsOpen = (client.writable === true || client.readable === true);
+        if (!socketIsOpen) {
+          client.destroy();
+          resolve();
+          return;
+        }
+
+        client.once('close', () => {
+          resolve();
+        });
+        client.once('error', () => {
+          resolve();
+        });
+        client.destroy();
       });
-      client.once('error', () => {
-        resolve();
-      });
-      client.destroy();
-    }),
+    },
 
     send
   };

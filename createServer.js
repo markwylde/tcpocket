@@ -25,7 +25,7 @@ function createServer (options, handler) {
           throw error;
         });
       }
-    }
+    };
 
     feed.on('next', next);
 
@@ -33,8 +33,8 @@ function createServer (options, handler) {
       if (error.includes('Invalid JSON received')) {
         socket.write(JSON.stringify(['?', error]) + '\n');
         socket.pipe(feed);
-        return
-      } 
+        return;
+      }
       throw error;
     });
 

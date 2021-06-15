@@ -4,7 +4,6 @@ const assert = require('assert');
 const test = require('basictap');
 
 const mapTimes = (times, fn) => Array(times).fill().map((_, index) => fn(index));
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const { createServer, createClient } = require('../');
 
@@ -13,11 +12,12 @@ function closeSockets (...args) {
 }
 
 test('basic two way server connection works', async t => {
-  t.plan(3);
+  t.plan(5);
 
   const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
-    t.deepEqual(request.data, { a: 1 }, 'server received a testCmd');
-    response.reply({ b: 2 });
+    t.equal(request.command, 12, 'server received the correct command');
+    t.equal(request.data.toString(), 'something', 'server received the correct command');
+    response.reply(24, Buffer.from('something else'));
   });
 
   server.open();
@@ -27,15 +27,17 @@ test('basic two way server connection works', async t => {
     t.pass('connect was successful');
   });
   await client.waitUntilConnected();
-  const response = await client.send({ a: 1 });
+
+  const response = await client.send(12, Buffer.from('something'));
 
   await closeSockets(server, client);
 
-  t.deepEqual(response, { b: 2 }, 'client received a testResp');
+  t.deepEqual(response.command, 24, 'client received correct command');
+  t.deepEqual(response.data.toString(), 'something else', 'client received correct data');
 });
 
 test('basic two way server connection works with certs', async t => {
-  t.plan(3);
+  t.plan(5);
 
   const serverTls = {
     key: fs.readFileSync('./certs/localhost.1.privkey.pem'),
@@ -50,9 +52,9 @@ test('basic two way server connection works with certs', async t => {
   };
 
   const server = createServer({ port: 8000, ...serverTls }, function (request, response) {
-    t.deepEqual(request.data, { a: 1 }, 'server received a testCmd');
-
-    response.reply({ b: 2 });
+    t.equal(request.command, 12, 'server received the correct command');
+    t.equal(request.data.toString(), 'something', 'server received the correct command');
+    response.reply(24, Buffer.from('something else'));
   });
   server.open();
 
@@ -62,11 +64,12 @@ test('basic two way server connection works with certs', async t => {
   });
 
   await client.waitUntilConnected();
-  const response = await client.send({ a: 1 });
+  const response = await client.send(12, Buffer.from('something'));
 
   await closeSockets(server, client);
 
-  t.deepEqual(response, { b: 2 }, 'client received a testResp');
+  t.deepEqual(response.command, 24, 'client received correct command');
+  t.deepEqual(response.data.toString(), 'something else', 'client received correct data');
 });
 
 test('certs - wrong client certs fail', async t => {
@@ -103,28 +106,28 @@ test('client can ask and get multiple responses', async t => {
   t.plan(1);
 
   const server = createServer({ port: 8000 }, function (request, response) {
-    response.reply({ ar: request.data.a });
+    response.reply(request.command, request.data);
   });
   server.open();
 
   const client = createClient({ host: '0.0.0.0', port: 8000 });
   await client.waitUntilConnected();
   const responses = await Promise.all([
-    client.send({ a: 1 }),
-    client.send({ a: 2 }),
-    client.send({ a: 3 }),
-    client.send({ a: 4 }),
-    client.send({ a: 10 })
+    client.send(101, Buffer.from('test1')),
+    client.send(102, Buffer.from('test2')),
+    client.send(103, Buffer.from('test3')),
+    client.send(104, Buffer.from('test4')),
+    client.send(105, Buffer.from('test5'))
   ]);
 
   await closeSockets(server, client);
 
   t.deepEqual(responses, [
-    { ar: 1 },
-    { ar: 2 },
-    { ar: 3 },
-    { ar: 4 },
-    { ar: 10 }
+    { command: 101, data: Buffer.from('test1') },
+    { command: 102, data: Buffer.from('test2') },
+    { command: 103, data: Buffer.from('test3') },
+    { command: 104, data: Buffer.from('test4') },
+    { command: 105, data: Buffer.from('test5') }
   ], 'server received all responses');
 });
 
@@ -132,14 +135,14 @@ test('client sends error when server disconnects mid message', async t => {
   t.plan(1);
 
   const server = createServer({ port: 8000 }, function (request, response) {
-    response.reply({ ar: request.data.a });
+    response.reply(100, Buffer.from('test'));
   });
   server.open();
 
   const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
   server.close();
 
-  client.send({ a: 1 }, false).catch(async error => {
+  client.send(101, Buffer.from('test2')).catch(async error => {
     await closeSockets(server, client);
 
     t.equal(error.message, 'client disconnected');
@@ -158,23 +161,47 @@ test('client errors when server never starts', async t => {
 });
 
 test('one way communication', async t => {
-  t.plan(2);
+  t.plan(4);
 
   const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
-    response.reply({ status: 'success' });
-    response.send({ another: 'message' });
+    response.reply(100, Buffer.from('test1'));
+    response.send(101, Buffer.from('test2'));
   });
   server.open();
 
   const client = createClient({ host: '0.0.0.0', port: 8000 });
   await client.waitUntilConnected();
-  client.on('message', async (data) => {
+  client.on('message', async ({ command, data }) => {
     await closeSockets(server, client);
 
-    t.equal(data.another, 'message');
+    t.equal(command, 101);
+    t.deepEqual(data, Buffer.from('test2'));
   });
-  const reply = await client.send({ command: 'something' });
-  t.deepEqual(reply, { status: 'success' });
+  const { command, data } = await client.send(103, Buffer.from('test3'));
+  t.deepEqual(command, 100);
+  t.deepEqual(data, Buffer.from('test1'));
+});
+
+test('one way communication - optional data', async t => {
+  t.plan(4);
+
+  const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
+    response.reply(100);
+    response.send(101);
+  });
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000 });
+  await client.waitUntilConnected();
+  client.on('message', async ({ command, data }) => {
+    await closeSockets(server, client);
+
+    t.equal(command, 101);
+    t.equal(data, undefined);
+  });
+  const { command, data } = await client.send(103, Buffer.from('test3'));
+  t.deepEqual(command, 100);
+  t.equal(data, undefined);
 });
 
 test('stress test and timings', async t => {
@@ -184,7 +211,7 @@ test('stress test and timings', async t => {
   let succeeded = 0;
   for (let serverIndex = 0; serverIndex < 20; serverIndex++) {
     const server = createServer({ port: 8000 + serverIndex }, function (request, response) {
-      response.reply({ ar: request.data.a });
+      response.reply(request.command, request.data);
     });
     server.open();
 
@@ -192,19 +219,19 @@ test('stress test and timings', async t => {
       const client = createClient({ host: '0.0.0.0', port: 8000 + serverIndex });
       await client.waitUntilConnected();
       const responses = await Promise.all([
-        client.send({ a: 1 }),
-        client.send({ a: 2 }),
-        client.send({ a: 3 }),
-        client.send({ a: 4 }),
-        client.send({ a: 10 })
+        client.send(100, Buffer.from('test100')),
+        client.send(101, Buffer.from('test101')),
+        client.send(102, Buffer.from('test102')),
+        client.send(103, Buffer.from('test103')),
+        client.send(104, Buffer.from('test104'))
       ]);
 
       assert.deepEqual(responses, [
-        { ar: 1 },
-        { ar: 2 },
-        { ar: 3 },
-        { ar: 4 },
-        { ar: 10 }
+        { command: 100, data: Buffer.from('test100') },
+        { command: 101, data: Buffer.from('test101') },
+        { command: 102, data: Buffer.from('test102') },
+        { command: 103, data: Buffer.from('test103') },
+        { command: 104, data: Buffer.from('test104') }
       ]);
       succeeded = succeeded + 1;
 

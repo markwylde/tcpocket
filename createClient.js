@@ -1,17 +1,9 @@
-const EventEmitter = require('events');
 const { promisify } = require('util');
-const ndJsonFe = require('ndjson-fe');
+const split = require('binary-split');
 
-function proxyEventEmitter (sourceEmitter, destinationEmitter) {
-  const originalEmit = sourceEmitter.emit.bind(sourceEmitter);
-  sourceEmitter.emit = (...args) => {
-    if (args[0] !== 'error') {
-      destinationEmitter.emit(...args);
-    }
+const miniler = require('./miniler.js');
 
-    originalEmit(...args);
-  };
-}
+const newLine = new Uint8Array([0x0a]);
 
 const waitUntil = promisify(function (fn, cb) {
   const result = fn();
@@ -29,35 +21,36 @@ function createClient ({ ...connectionOptions }) {
   let stopped;
   let connected = false;
 
-  const eventEmitter = new EventEmitter();
-
   const responders = {};
 
   function handler () {
-    const feed = ndJsonFe();
+    const next = buffer => {
+      const decoded = miniler.decode(buffer);
 
-    feed.on('next', row => {
-      const responder = responders[row[0]];
-      delete responders[row[0]];
+      const responder = responders[decoded[0]];
+      delete responders[decoded[0]];
+
+      const response = {
+        command: decoded[1],
+        data: decoded[2]
+      };
 
       if (responder) {
-        responder.resolve(row[1]);
+        responder.resolve(response);
       } else {
-        eventEmitter.emit('message', row[1]);
+        client.emit('message', response);
       }
-    });
+    };
 
-    client.pipe(feed);
+    client
+      .pipe(split([0x0a]))
+      .on('data', next);
   }
 
   function makeConnection () {
-    if (connectionOptions.key) {
-      client = require('tls').connect(connectionOptions, handler);
-    } else {
-      client = require('net').createConnection(connectionOptions, handler);
-    }
-
-    proxyEventEmitter(client, eventEmitter);
+    client = connectionOptions.key
+      ? require('tls').connect(connectionOptions, handler)
+      : require('net').createConnection(connectionOptions, handler);
 
     client.on('connect', () => {
       connected = true;
@@ -69,17 +62,14 @@ function createClient ({ ...connectionOptions }) {
       });
       connected = false;
     });
-
-    client.on('error', (error, data) => {
-      eventEmitter.emit('error', error, data);
-    });
-
-    client.setMaxListeners(100);
   }
 
   makeConnection();
 
-  function send (data) {
+  function send (command, data) {
+    if (askSequence > (256 * 256)) {
+      askSequence = 0;
+    }
     const currentAskSequence = askSequence++;
 
     return new Promise((resolve, reject) => {
@@ -88,7 +78,8 @@ function createClient ({ ...connectionOptions }) {
         return;
       }
 
-      client.write(JSON.stringify([currentAskSequence, data]) + '\n');
+      client.write(miniler.encode(currentAskSequence, command, data));
+      client.write(newLine);
 
       responders[currentAskSequence] = { resolve, reject };
     });
@@ -97,15 +88,14 @@ function createClient ({ ...connectionOptions }) {
   return {
     client,
 
-    eventEmitter,
-    once: eventEmitter.once.bind(eventEmitter),
-    on: eventEmitter.addListener.bind(eventEmitter),
-    off: eventEmitter.removeListener.bind(eventEmitter),
+    once: client.once.bind(client),
+    on: client.addListener.bind(client),
+    off: client.removeListener.bind(client),
 
     waitUntilConnected: () => {
       return waitUntil(() => {
         return connected;
-      })
+      });
     },
 
     close: async function (force) {

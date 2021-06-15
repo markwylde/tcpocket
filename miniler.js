@@ -1,6 +1,10 @@
 function encode (id, command, data) {
-  if (command < 0 || command > 255) {
-    throw new Error('tcpocket:encode - command must be an integer between 0 and 255');
+  if (id < 2 || id > (256 * 256)) {
+    throw new Error('tcpocket:encode - id must be an integer between 2 and ' + (256 * 256));
+  }
+
+  if (command < 2 || command > 255) {
+    throw new Error('tcpocket:encode - command must be an integer between 2 and 255');
   }
 
   const id16 = new Int16Array([id]);

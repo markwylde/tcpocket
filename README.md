@@ -11,7 +11,7 @@ A request response communication wrapper around a tcp server/client.
 The handler will execute with a request and response argument.
 
 ### request
-A request will have command (a number between 0 and 255), and optionally some data (a buffer).
+A request will have command (a number between 2 and 255), and optionally some data (a buffer).
 
 ### response
 A response has two commands (reply, send).
@@ -23,7 +23,7 @@ You can `send` many times, but the server will not correlate this with the reque
 ```javascript
 const tcpocket = require('tcpocket');
 
-// A command must be a number between 0 and 255
+// A command must be a number between 2 and 255
 const TEST1 = 123;
 const TEST2 = 125;
 const TEST3 = 128;

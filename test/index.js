@@ -154,7 +154,7 @@ test('client errors when server never starts', async t => {
 
   const client = createClient({ host: '0.0.0.0', port: 8000, reconnectDelay: 50 });
 
-  client.send({ a: 1 }).catch(error => {
+  client.send(101, { a: 1 }).catch(error => {
     t.equal(error.message, 'client disconnected');
   });
   client.close();

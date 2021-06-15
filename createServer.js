@@ -1,7 +1,7 @@
 const split = require('binary-split');
 const miniler = require('./miniler.js');
 
-const newLine = new Uint8Array([0x0a]);
+const newLine = new Uint8Array([1]);
 
 function createServer (options, handler) {
   const sockets = [];
@@ -12,16 +12,34 @@ function createServer (options, handler) {
     const next = buffer => {
       const decoded = miniler.decode(buffer);
       try {
-        handler({
+        const hand = {
           socket,
           command: decoded[1],
           data: decoded[2]
-        }, {
+        };
+
+        hand.json = () => {
+          if (!hand._json) {
+            hand._json = JSON.parse(decoded[2]);
+          }
+
+          return hand._json;
+        };
+
+        handler(hand, {
           send: (command, data) => {
-            socket.write(miniler.encode(0, command, data));
+            if (data && data.constructor.name === 'Object') {
+              data = Buffer.from(JSON.stringify(data));
+            }
+
+            socket.write(miniler.encode(2, command, data));
             socket.write(newLine);
           },
           reply: (command, data) => {
+            if (data && data.constructor.name === 'Object') {
+              data = Buffer.from(JSON.stringify(data));
+            }
+
             socket.write(miniler.encode(decoded[0], command, data));
             socket.write(newLine);
           }
@@ -34,7 +52,7 @@ function createServer (options, handler) {
     };
 
     socket
-      .pipe(split([0x0a]))
+      .pipe(split([1]))
       .on('data', next);
   }
 

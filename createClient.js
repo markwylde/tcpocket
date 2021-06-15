@@ -3,7 +3,7 @@ const split = require('binary-split');
 
 const miniler = require('./miniler.js');
 
-const newLine = new Uint8Array([0x0a]);
+const newLine = new Uint8Array([1]);
 
 const waitUntil = promisify(function (fn, cb) {
   const result = fn();
@@ -17,7 +17,7 @@ const waitUntil = promisify(function (fn, cb) {
 
 function createClient ({ ...connectionOptions }) {
   let client;
-  let askSequence = 0;
+  let askSequence = 3;
   let stopped;
   let connected = false;
 
@@ -51,7 +51,7 @@ function createClient ({ ...connectionOptions }) {
     };
 
     client
-      .pipe(split([0x0a]))
+      .pipe(split([1]))
       .on('data', next);
   }
 
@@ -76,11 +76,11 @@ function createClient ({ ...connectionOptions }) {
 
   function send (command, data) {
     if (data && data.constructor.name === 'Object') {
-      data = JSON.stringify(data);
+      data = Buffer.from(JSON.stringify(data));
     }
 
     if (askSequence > (256 * 256)) {
-      askSequence = 0;
+      askSequence = 3;
     }
     const currentAskSequence = askSequence++;
 

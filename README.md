@@ -6,31 +6,51 @@
 
 A request response communication wrapper around a tcp server/client.
 
+## API
+### tcpocket.createServer(options, handler)
+The handler will execute with a request and response argument.
+
+### request
+A request will have command (a number between 0 and 255), and optionally some data (a buffer).
+
+### response
+A response has two commands (reply, send).
+You can `reply` only once, and that will resolve the promise on the client.
+You can `send` many times, but the server will not correlate this with the request.
+
 ## Example usage
 ### Insecure
 ```javascript
 const tcpocket = require('tcpocket');
 
+// A command must be a number between 0 and 255
+const TEST1 = 123;
+const TEST2 = 125;
+const TEST3 = 128;
+
 async function main () {
   const server = tcpocket.createServer({ port: 8000 }, function (request, response) {
-    console.log(request.data) // === { a: 1 }
+    console.log(request.command) // === TEST1 || 123
+    console.log(request.data) // === <Buffer>'some data'
 
     // You can reply only once
-    response.reply({ b: 2 });
+    response.reply(TEST2, Buffer.from('some reply'));
 
     // Sending happens outside of a reply and can be called multiple times
-    response.send({ another: 'message' });
+    response.send(TEST3, Buffer.from('some extra data'));
   });
   server.open();
 
   const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
-  client.on('message', (data) => {
-    console.log(data) // === { another: 'message' }
+  client.on('message', ({ command, data }) => {
+    console.log(command) // === TEST3
+    console.log(data) // === 'some extra data'
   });
 
   await client.waitUntilReady();
-  const response = await client.send({ a: 1 });
-  console.log(response) // === { b: 2 }
+  const { command, data} = await client.send(TEST1, Buffer.from('some data'));
+  console.log(command) // === TEST2
+  console.log(data) // === 'some reply''
 }
 
 main();
@@ -51,22 +71,27 @@ const tls = {
 
 async function main () {
   const server = tcpocket.createServer({ port: 8000, ...tls }, function (request, response) {
-    console.log(request.data) // === { a: 1 }
+    console.log(request.command) // === TEST1 || 123
+    console.log(request.data) // === <Buffer> 'some data'
 
     // You can reply only once
-    response.reply({ b: 2 });
+    response.reply(TEST2, Buffer.from('some reply'));
 
     // Sending happens outside of a reply and can be called multiple times
-    response.send({ another: 'message' });
+    response.send(TEST3, Buffer.from('some extra data'));
   });
   server.open();
 
-  const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000, ...tls });
+  const client = tcpocket.createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('message', ({ command, data }) => {
+    console.log(command) // === TEST3
+    console.log(data) // === 'some extra data'
+  });
 
   await client.waitUntilReady();
-  const response = await client.send({ a: 1 });
-
-  console.log(response) // === { b: 2}
+  const { command, data} = await client.send(TEST1, Buffer.from('some data'));
+  console.log(command) // === TEST2
+  console.log(data) // === 'some reply''
 }
 
 main();

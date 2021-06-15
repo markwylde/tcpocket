@@ -9,6 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "binary-split": "^1.0.5",
     "ndjson-fe": "^1.2.10"
   },
   "devDependencies": {

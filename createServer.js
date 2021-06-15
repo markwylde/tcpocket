@@ -1,23 +1,29 @@
-const ndJsonFe = require('ndjson-fe');
+const split = require('binary-split');
+const miniler = require('./miniler.js');
+
+const newLine = new Uint8Array([0x0a]);
 
 function createServer (options, handler) {
   const sockets = [];
+
   function wrapper (socket) {
     sockets.push(socket);
 
-    const feed = ndJsonFe();
-
-    const next = data => {
+    const next = buffer => {
+      const decoded = miniler.decode(buffer);
       try {
         handler({
           socket,
-          data: data[1]
+          command: decoded[1],
+          data: decoded[2]
         }, {
-          send: responseData => {
-            socket.write(JSON.stringify(['?', responseData]) + '\n');
+          send: (command, data) => {
+            socket.write(miniler.encode(0, command, data));
+            socket.write(newLine);
           },
-          reply: responseData => {
-            socket.write(JSON.stringify([data[0], responseData]) + '\n');
+          reply: (command, data) => {
+            socket.write(miniler.encode(decoded[0], command, data));
+            socket.write(newLine);
           }
         });
       } catch (error) {
@@ -27,21 +33,14 @@ function createServer (options, handler) {
       }
     };
 
-    feed.on('next', next);
-
-    feed.on('error', function (error) {
-      if (error.includes('Invalid JSON received')) {
-        socket.write(JSON.stringify(['?', error]) + '\n');
-        socket.pipe(feed);
-        return;
-      }
-      throw error;
-    });
-
-    socket.pipe(feed);
+    socket
+      .pipe(split([0x0a]))
+      .on('data', next);
   }
 
-  const server = options.key ? require('tls').createServer(options, wrapper) : require('net').createServer(wrapper);
+  const server = options.key
+    ? require('tls').createServer(options, wrapper)
+    : require('net').createServer(wrapper);
 
   return {
     ...server,

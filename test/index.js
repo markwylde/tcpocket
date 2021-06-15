@@ -123,11 +123,11 @@ test('client can ask and get multiple responses', async t => {
   await closeSockets(server, client);
 
   t.deepEqual(responses, [
-    { command: 101, data: Buffer.from('test1') },
-    { command: 102, data: Buffer.from('test2') },
-    { command: 103, data: Buffer.from('test3') },
-    { command: 104, data: Buffer.from('test4') },
-    { command: 105, data: Buffer.from('test5') }
+    { command: 101, data: Buffer.from('test1'), json: responses[0].json },
+    { command: 102, data: Buffer.from('test2'), json: responses[1].json },
+    { command: 103, data: Buffer.from('test3'), json: responses[2].json },
+    { command: 104, data: Buffer.from('test4'), json: responses[3].json },
+    { command: 105, data: Buffer.from('test5'), json: responses[4].json }
   ], 'server received all responses');
 });
 
@@ -227,11 +227,11 @@ test('stress test and timings', async t => {
       ]);
 
       assert.deepEqual(responses, [
-        { command: 100, data: Buffer.from('test100') },
-        { command: 101, data: Buffer.from('test101') },
-        { command: 102, data: Buffer.from('test102') },
-        { command: 103, data: Buffer.from('test103') },
-        { command: 104, data: Buffer.from('test104') }
+        { command: 100, data: Buffer.from('test100'), json: responses[0].json },
+        { command: 101, data: Buffer.from('test101'), json: responses[1].json },
+        { command: 102, data: Buffer.from('test102'), json: responses[2].json },
+        { command: 103, data: Buffer.from('test103'), json: responses[3].json },
+        { command: 104, data: Buffer.from('test104'), json: responses[4].json }
       ]);
       succeeded = succeeded + 1;
 

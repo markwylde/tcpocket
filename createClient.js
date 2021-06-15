@@ -35,6 +35,14 @@ function createClient ({ ...connectionOptions }) {
         data: decoded[2]
       };
 
+      response.json = () => {
+        if (!response._json) {
+          response._json = JSON.parse(decoded[2]);
+        }
+
+        return response._json;
+      };
+
       if (responder) {
         responder.resolve(response);
       } else {
@@ -67,6 +75,10 @@ function createClient ({ ...connectionOptions }) {
   makeConnection();
 
   function send (command, data) {
+    if (data && data.constructor.name === 'Object') {
+      data = JSON.stringify(data);
+    }
+
     if (askSequence > (256 * 256)) {
       askSequence = 0;
     }

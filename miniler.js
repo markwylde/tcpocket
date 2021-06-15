@@ -13,10 +13,10 @@ function encode (id, command, data) {
 
   return data
     ? Buffer.concat([
-      header,
-      data
-    ])
-    : header
+        header,
+        data
+      ])
+    : header;
 }
 
 function decode (buffer) {
@@ -27,14 +27,14 @@ function decode (buffer) {
 
   return buffer.length > 3
     ? [
-      id[0],
-      command,
-      buffer.slice(3)
-    ]
+        id[0],
+        command,
+        buffer.slice(3)
+      ]
     : [
-      id[0],
-      command
-    ]
+        id[0],
+        command
+      ];
 }
 
 module.exports = {

@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
-const split = require('binary-split');
+
+const split = require('./split');
 const miniler = require('./miniler.js');
 
 const newLine = new Uint8Array([1]);
@@ -55,9 +56,7 @@ function createServer (options, handler) {
       }
     };
 
-    socket
-      .pipe(split([1]))
-      .on('data', next);
+    split(socket, 1, 3, next);
   }
 
   const server = options.key

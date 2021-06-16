@@ -3,6 +3,8 @@ const assert = require('assert');
 
 const test = require('basictap');
 
+require('./miniler.js');
+
 const mapTimes = (times, fn) => Array(times).fill().map((_, index) => fn(index));
 
 const { createServer, createClient } = require('../');
@@ -112,6 +114,7 @@ test('client can ask and get multiple responses', async t => {
 
   const client = createClient({ host: '0.0.0.0', port: 8000 });
   await client.waitUntilConnected();
+
   const responses = await Promise.all([
     client.send(101, Buffer.from('test1')),
     client.send(102, Buffer.from('test2')),

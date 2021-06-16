@@ -1,6 +1,6 @@
 const { promisify } = require('util');
-const split = require('binary-split');
 
+const split = require('./split');
 const miniler = require('./miniler.js');
 
 const newLine = new Uint8Array([1]);
@@ -50,9 +50,7 @@ function createClient ({ ...connectionOptions }) {
       }
     };
 
-    client
-      .pipe(split([1]))
-      .on('data', next);
+    split(client, 1, 3, next);
   }
 
   function makeConnection () {
@@ -79,9 +77,10 @@ function createClient ({ ...connectionOptions }) {
       data = Buffer.from(JSON.stringify(data));
     }
 
-    if (askSequence > (256 * 256)) {
+    if (askSequence > 65535) {
       askSequence = 3;
     }
+
     const currentAskSequence = askSequence++;
 
     return new Promise((resolve, reject) => {

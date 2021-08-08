@@ -73,7 +73,7 @@ function createClient ({ ...connectionOptions }) {
   makeConnection();
 
   function send (command, data) {
-    if (data && data.constructor.name === 'Object') {
+    if (data && data.constructor.name !== 'Buffer') {
       data = Buffer.from(JSON.stringify(data));
     }
 

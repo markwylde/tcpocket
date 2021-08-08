@@ -38,6 +38,66 @@ test('basic two way server connection works', async t => {
   t.deepEqual(response.data.toString(), 'something else', 'client received correct data');
 });
 
+test('client - send data as string', async t => {
+  t.plan(3);
+
+  const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
+    t.equal(request.command, 12, 'server received the correct command');
+    t.equal(request.data.toString(), '"something"', 'server received the correct command');
+    response.reply(2);
+  });
+
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('connect', () => {
+    t.pass('connect was successful');
+  });
+  await client.waitUntilConnected();
+  await client.send(12, 'something');
+  await closeSockets(server, client);
+});
+
+test('client - send data as object', async t => {
+  t.plan(3);
+
+  const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
+    t.equal(request.command, 12, 'server received the correct command');
+    t.equal(request.data.toString(), '{"a":"something"}', 'server received the correct command');
+    response.reply(2);
+  });
+
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('connect', () => {
+    t.pass('connect was successful');
+  });
+  await client.waitUntilConnected();
+  await client.send(12, {a: 'something'});
+  await closeSockets(server, client);
+});
+
+test('client - send data as array', async t => {
+  t.plan(3);
+
+  const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
+    t.equal(request.command, 12, 'server received the correct command');
+    t.equal(request.data.toString(), '["something"]', 'server received the correct command');
+    response.reply(2);
+  });
+
+  server.open();
+
+  const client = createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('connect', () => {
+    t.pass('connect was successful');
+  });
+  await client.waitUntilConnected();
+  await client.send(12, ['something']);
+  await closeSockets(server, client);
+});
+
 test('basic two way server connection works with certs', async t => {
   t.plan(5);
 

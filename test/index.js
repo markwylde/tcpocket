@@ -74,7 +74,7 @@ test('client - send data as object', async t => {
     t.pass('connect was successful');
   });
   await client.waitUntilConnected();
-  await client.send(12, {a: 'something'});
+  await client.send(12, { a: 'something' });
   await closeSockets(server, client);
 });
 

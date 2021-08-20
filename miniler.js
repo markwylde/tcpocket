@@ -17,9 +17,9 @@ function encode (id, command, data) {
 
   return data
     ? Buffer.concat([
-        header,
-        data
-      ])
+      header,
+      data
+    ])
     : header;
 }
 

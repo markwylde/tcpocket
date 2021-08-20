@@ -83,7 +83,9 @@ function createServer (options, handler) {
         }
       });
 
-      server.close(fn);
+      server.close();
+
+      fn && fn();
     }
   };
 }

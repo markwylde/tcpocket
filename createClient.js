@@ -18,7 +18,7 @@ const waitUntil = promisify(function (fn, cb) {
 
 function createClient ({ ...connectionOptions }) {
   let client;
-  let askSequence = increlation(3, 65535);
+  const askSequence = increlation(3, 65535);
   let stopped;
   let connected = false;
 
@@ -38,7 +38,13 @@ function createClient ({ ...connectionOptions }) {
 
       response.json = () => {
         if (!response._json) {
-          response._json = JSON.parse(decoded[2]);
+          try {
+            response._json = JSON.parse(decoded[2]);
+          } catch (error) {
+            error.command = decoded[1];
+            error.data = decoded[2] && decoded[2].toString();
+            throw error;
+          }
         }
 
         return response._json;

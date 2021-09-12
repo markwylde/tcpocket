@@ -11,6 +11,15 @@ function createServer (options, handler) {
   const eventEmitter = new EventEmitter();
 
   function wrapper (socket) {
+    socket.send = (command, data) => {
+      if (data && data.constructor.name === 'Object') {
+        data = Buffer.from(JSON.stringify(data));
+      }
+
+      socket.write(miniler.encode(2, command, data));
+      socket.write(newLine);
+    };
+
     eventEmitter.emit('connection', socket);
     sockets.push(socket);
 
@@ -25,7 +34,13 @@ function createServer (options, handler) {
 
         hand.json = () => {
           if (!hand._json) {
-            hand._json = JSON.parse(decoded[2]);
+            try {
+              hand._json = JSON.parse(decoded[2]);
+            } catch (error) {
+              error.command = decoded[1];
+              error.data = decoded[2] && decoded[2].toString();
+              throw error;
+            }
           }
 
           return hand._json;

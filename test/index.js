@@ -13,6 +13,36 @@ function closeSockets (...args) {
   return Promise.all(args.map(arg => arg.close()));
 }
 
+test('send on connection', async t => {
+  t.plan(4);
+
+  const server = createServer({ host: 'localhost', port: 8000 }, function (request, response) {
+    t.fail('should not call handler');
+  });
+
+  server.open();
+
+  server.on('connection', socket => {
+    socket.send(101, {
+      2: 4
+    });
+  });
+
+  const client = createClient({ host: '0.0.0.0', port: 8000 });
+  client.on('connect', () => {
+    t.pass('connect was successful');
+  });
+
+  client.on('message', data => {
+    t.equal(data.command, 101, 'command is correct');
+    t.equal(data.json()[2], 4);
+    closeSockets(server, client);
+    t.pass();
+  });
+
+  await client.waitUntilConnected();
+});
+
 test('basic two way server connection works', async t => {
   t.plan(5);
 

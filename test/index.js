@@ -272,7 +272,7 @@ test('stress test and timings', async t => {
 
   const startTime = Date.now();
   let succeeded = 0;
-  for (let serverIndex = 0; serverIndex < 20; serverIndex++) {
+  for (let serverIndex = 0; serverIndex < 10; serverIndex++) {
     const server = createServer({ port: 8000 + serverIndex }, function (request, response) {
       response.reply(request.command, request.data);
     });
@@ -308,6 +308,6 @@ test('stress test and timings', async t => {
 
   const timeTaken = Date.now() - startTime;
 
-  t.equal(succeeded, 1000);
+  t.equal(succeeded, 500);
   t.ok(timeTaken < 3000, 'should take less than 3 seconds (' + timeTaken + 'ms)');
 });

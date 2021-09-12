@@ -267,7 +267,7 @@ test('one way communication - optional data', async t => {
   t.equal(data, undefined);
 });
 
-test.only('stress test and timings', async t => {
+test('stress test and timings', async t => {
   t.plan(2);
 
   const startTime = Date.now();

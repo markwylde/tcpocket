@@ -272,7 +272,7 @@ test('stress test and timings', async t => {
 
   const startTime = Date.now();
   let succeeded = 0;
-  for (let serverIndex = 0; serverIndex < 20; serverIndex++) {
+  for (let serverIndex = 0; serverIndex < 10; serverIndex++) {
     const server = createServer({ port: 8000 + serverIndex }, function (request, response) {
       response.reply(request.command, request.data);
     });
@@ -289,7 +289,7 @@ test('stress test and timings', async t => {
         client.send(104, Buffer.from('test104'))
       ]);
 
-      assert.deepEqual(responses, [
+      assert.deepStrictEqual(responses, [
         { command: 100, data: Buffer.from('test100'), json: responses[0].json },
         { command: 101, data: Buffer.from('test101'), json: responses[1].json },
         { command: 102, data: Buffer.from('test102'), json: responses[2].json },
@@ -308,6 +308,6 @@ test('stress test and timings', async t => {
 
   const timeTaken = Date.now() - startTime;
 
-  t.equal(succeeded, 1000);
-  t.ok(timeTaken < 2000, 'should take less than 2 seconds (' + timeTaken + 'ms)');
+  t.equal(succeeded, 500);
+  t.ok(timeTaken < 3000, 'should take less than 3 seconds (' + timeTaken + 'ms)');
 });

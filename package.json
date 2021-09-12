@@ -9,8 +9,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "basictap": "^2.0.2",
-    "c8": "^7.8.0"
+    "basictap": "^2.2.1",
+    "c8": "^7.9.0"
   },
   "directories": {
     "lib": "lib",
@@ -24,5 +24,8 @@
   "bugs": {
     "url": "https://github.com/markwylde/tcpocket/issues"
   },
-  "homepage": "https://github.com/markwylde/tcpocket#readme"
+  "homepage": "https://github.com/markwylde/tcpocket#readme",
+  "dependencies": {
+    "increlation": "^1.0.0"
+  }
 }

@@ -1,4 +1,5 @@
 const { promisify } = require('util');
+const increlation = require('increlation');
 
 const split = require('./split');
 const miniler = require('./miniler.js');
@@ -17,7 +18,7 @@ const waitUntil = promisify(function (fn, cb) {
 
 function createClient ({ ...connectionOptions }) {
   let client;
-  let askSequence = 3;
+  let askSequence = increlation(3, 65535);
   let stopped;
   let connected = false;
 
@@ -45,6 +46,7 @@ function createClient ({ ...connectionOptions }) {
 
       if (responder) {
         responder.resolve(response);
+        askSequence.release(decoded[0]);
       } else {
         client.emit('message', response);
       }
@@ -65,6 +67,7 @@ function createClient ({ ...connectionOptions }) {
     client.on('close', async () => {
       Object.keys(responders).forEach(key => {
         responders[key].reject(new Error('client disconnected'));
+        askSequence.release(key);
       });
       connected = false;
     });
@@ -72,23 +75,18 @@ function createClient ({ ...connectionOptions }) {
 
   makeConnection();
 
-  function send (command, data) {
+  async function send (command, data) {
     if (data && data.constructor.name !== 'Buffer') {
       data = Buffer.from(JSON.stringify(data));
     }
 
-    if (askSequence > 65535) {
-      askSequence = 3;
+    const currentAskSequence = await askSequence.waitForNext();
+
+    if (!connected) {
+      throw new Error('client disconnected');
     }
 
-    const currentAskSequence = askSequence++;
-
     return new Promise((resolve, reject) => {
-      if (!connected) {
-        reject(new Error('client disconnected'));
-        return;
-      }
-
       client.write(miniler.encode(currentAskSequence, command, data));
       client.write(newLine);
 

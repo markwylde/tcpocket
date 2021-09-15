@@ -1,5 +1,5 @@
 const { promisify } = require('util');
-const increlation = require('increlation');
+const increlation = require('increlation/async');
 
 const split = require('./split');
 const miniler = require('./miniler.js');
@@ -86,17 +86,18 @@ function createClient ({ ...connectionOptions }) {
       data = Buffer.from(JSON.stringify(data));
     }
 
-    const currentAskSequence = await askSequence.waitForNext();
+    const currentAskSequence = await askSequence.next();
+    const currentAskSequenceValue = currentAskSequence.value;
 
     if (!connected) {
       throw new Error('client disconnected');
     }
 
     return new Promise((resolve, reject) => {
-      client.write(miniler.encode(currentAskSequence, command, data));
+      client.write(miniler.encode(currentAskSequenceValue, command, data));
       client.write(newLine);
 
-      responders[currentAskSequence] = { resolve, reject };
+      responders[currentAskSequenceValue] = { resolve, reject };
     });
   }
 

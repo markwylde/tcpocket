@@ -26,6 +26,6 @@
   },
   "homepage": "https://github.com/markwylde/tcpocket#readme",
   "dependencies": {
-    "increlation": "^2.0.0"
+    "increlation": "^2.0.1"
   }
 }

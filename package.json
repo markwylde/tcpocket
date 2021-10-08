@@ -9,8 +9,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "basictap": "^2.2.1",
-    "c8": "^7.9.0"
+    "basictap": "^2.2.2",
+    "c8": "^7.10.0"
   },
   "directories": {
     "lib": "lib",

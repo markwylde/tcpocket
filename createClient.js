@@ -70,6 +70,17 @@ function createClient ({ ...connectionOptions }) {
       connected = true;
     });
 
+    const originalEmit = client.emit.bind(client);
+    client.emit = (...args) => {
+      if (args[0] === 'error' && args[1] && [
+        'EPIPE', 'ECONNRESET'
+      ].includes(args[1].code)) {
+        return;
+      }
+
+      return originalEmit(...args);
+    };
+
     client.on('close', async () => {
       Object.keys(responders).forEach(key => {
         responders[key].reject(new Error('client disconnected'));

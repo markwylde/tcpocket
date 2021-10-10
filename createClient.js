@@ -121,7 +121,7 @@ function createClient ({ ...connectionOptions }) {
 
     waitUntilConnected: () => {
       return waitUntil(() => {
-        return connected;
+        return connected || stopped;
       });
     },
 

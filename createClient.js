@@ -73,7 +73,7 @@ function createClient ({ ...connectionOptions }) {
     const originalEmit = client.emit.bind(client);
     client.emit = (...args) => {
       if (args[0] === 'error' && args[1] && [
-        'EPIPE', 'ECONNRESET'
+        'EPIPE', 'ECONNRESET', 'ECONNREFUSED'
       ].includes(args[1].code)) {
         return;
       }
